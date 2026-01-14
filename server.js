@@ -59,11 +59,20 @@ app.get('/video', async (req, res) => {
       'Content-Type': 'video/mp4'
     });
 
-    ytdl(url, {
-      format,
-      range: { start, end },
-      highWaterMark: 1 << 25
-    }).pipe(res);
+const range = req.headers.range;
+
+res.setHeader('Content-Type', 'video/mp4');
+res.setHeader('Accept-Ranges', 'bytes');
+
+ytdl(url, {
+  filter: format =>
+    format.container === 'mp4' &&
+    format.hasAudio &&
+    format.hasVideo,
+  range,
+  highWaterMark: 1 << 25
+}).pipe(res);
+
 
   } catch (err) {
     console.error(err);
