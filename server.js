@@ -1,68 +1,48 @@
 import express from 'express';
-import { Innertube } from 'youtubei.js';
+import fetch from 'node-fetch';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ES Modules対応
+// ES Modules 対応
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// Innertube 初期化
-let youtube;
-let youtubeReady = false;
-
-(async () => {
-  try {
-    youtube = await Innertube.create({
-      lang: 'ja',
-      location: 'JP',
-      retrieve_player: true,
-    });
-    youtubeReady = true;
-    console.log("✅ Innertube initialized");
-  } catch (err) {
-    console.error("❌ Innertube initialization failed:", err.message);
-  }
-})();
 
 // index.html 配信
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// stream URL 返すルート
+// 外部サーバ経由で動画 URL を返す
 app.get('/video', async (req, res) => {
-  if (!youtubeReady) {
-    return res.status(503).json({ error: "YouTube API 初期化中。少し待ってください" });
-  }
-
   const videoId = req.query.id;
   if (!videoId) return res.status(400).json({ error: 'video id required' });
 
+  const mainUrl = `https://siawaseok.duckdns.org/api/video2/${videoId}`;
+  const fallbackUrl = `https://siatube.wjg.jp/api/video2/${videoId}`;
+
   try {
-    const info = await youtube.videos.get(videoId);
-
-    // mp4 + audio付きの最高画質を選ぶ
-    const format = info.streamingData.formats.find(f =>
-      f.mimeType.includes('video/mp4') && f.audioQuality
-    );
-
-    if (!format) {
-      return res.status(500).json({ error: "No suitable format found" });
-    }
-
-    // JSONで URL を返すだけ
-    res.json({ url: format.url });
+    let response = await fetch(mainUrl);
+    if (!response.ok) throw new Error('main server error');
+    let json = await response.json();
+    return res.json(json);
   } catch (err) {
-    console.error("Failed to get stream URL:", err.message);
-    res.status(500).json({ error: "Failed to get stream URL" });
+    console.error("video: main server failed, fallbackへ", err.message);
+    try {
+      let response = await fetch(fallbackUrl);
+      if (!response.ok) throw new Error('fallback server error');
+      let json = await response.json();
+      return res.json(json);
+    } catch (err2) {
+      console.error("video: fallbackも失敗", err2.message);
+      return res.status(500).json({ error: "video: 両方のサーバーで取得失敗" });
+    }
   }
 });
 
 // サーバ起動
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running at http://localhost:${PORT}`);
 });
