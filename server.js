@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { Client } from 'youtubei.js';
+import Youtube from 'youtubei.js'; // 修正版: Client ではなくデフォルトエクスポート
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -21,12 +21,12 @@ app.get('/video', async (req, res) => {
   if (!videoId) return res.status(400).json({ error: 'video id required' });
 
   try {
-    const youtube = new Client();
+    const youtube = new Youtube();
     const video = await youtube.getVideo(videoId);
 
-    // MP4 形式で再生可能なストリームを選択
+    // MP4形式で再生可能なストリームを選択
     const formats = video.streamingData.formats;
-    // 720p以上、audio+videoあるやつを優先
+    // 720p以上、音声付き動画を優先
     const stream = formats.find(f => f.hasVideo && f.hasAudio && f.qualityLabel?.includes('720'));
 
     if (!stream) {
