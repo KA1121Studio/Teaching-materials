@@ -6,18 +6,26 @@ import { fileURLToPath } from 'url';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ES Modules 対応
+// ES Modules対応
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Innertube 初期化
 let youtube;
+let youtubeReady = false;
+
 (async () => {
-  youtube = await Innertube.create({
-    lang: 'ja',
-    location: 'JP',
-    retrieve_player: true,
-  });
+  try {
+    youtube = await Innertube.create({
+      lang: 'ja',
+      location: 'JP',
+      retrieve_player: true,
+    });
+    youtubeReady = true;
+    console.log("✅ Innertube initialized");
+  } catch (err) {
+    console.error("❌ Innertube initialization failed:", err.message);
+  }
 })();
 
 // index.html 配信
@@ -27,11 +35,12 @@ app.get('/', (req, res) => {
 
 // stream URL 返すルート
 app.get('/video', async (req, res) => {
-  const videoId = req.query.id;
-  if (!videoId) {
-    res.status(400).json({ error: 'video id required' });
-    return;
+  if (!youtubeReady) {
+    return res.status(503).json({ error: "YouTube API 初期化中。少し待ってください" });
   }
+
+  const videoId = req.query.id;
+  if (!videoId) return res.status(400).json({ error: 'video id required' });
 
   try {
     const info = await youtube.videos.get(videoId);
@@ -42,19 +51,18 @@ app.get('/video', async (req, res) => {
     );
 
     if (!format) {
-      res.status(500).json({ error: 'No suitable format found' });
-      return;
+      return res.status(500).json({ error: "No suitable format found" });
     }
 
-    // JSON で URL を返す
+    // JSONで URL を返すだけ
     res.json({ url: format.url });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'Failed to get stream URL' });
+  } catch (err) {
+    console.error("Failed to get stream URL:", err.message);
+    res.status(500).json({ error: "Failed to get stream URL" });
   }
 });
 
 // サーバ起動
 app.listen(PORT, () => {
-  console.log('server started on port', PORT);
+  console.log(`Server running on http://localhost:${PORT}`);
 });
