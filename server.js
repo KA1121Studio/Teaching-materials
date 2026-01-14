@@ -1,3 +1,4 @@
+// server.js
 import express from 'express';
 import Youtube from 'youtubei.js';
 import fetch from 'node-fetch'; // プロキシ用
@@ -5,7 +6,7 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // ES Modules 対応
 const __filename = fileURLToPath(import.meta.url);
@@ -23,15 +24,16 @@ app.get('/video', async (req, res) => {
 
   try {
     const youtube = new Youtube();
-    const video = await youtube.getVideo(videoId);
+    const video = await youtube.getVideoDetails(videoId); // ← v14対応
 
+    // 720p以上の音声付き動画を優先
     const formats = video.streamingData.formats;
     let stream = formats.find(f => f.hasVideo && f.hasAudio && f.qualityLabel?.includes('720'));
-    if(!stream) stream = formats.find(f => f.hasVideo && f.hasAudio);
+    if (!stream) stream = formats.find(f => f.hasVideo && f.hasAudio);
 
-    if(!stream) return res.status(500).json({ error: '再生可能なストリームが見つかりません' });
+    if (!stream) return res.status(500).json({ error: '再生可能なストリームが見つかりません' });
 
-    // ブラウザからサーバ経由で再生するための proxy URL
+    // ブラウザからサーバ経由で再生する proxy URL
     res.json({ proxyUrl: `/proxy?url=${encodeURIComponent(stream.url)}` });
 
   } catch (err) {
@@ -40,15 +42,15 @@ app.get('/video', async (req, res) => {
   }
 });
 
-// プロキシとして動画データを返す
+// 実際に動画データをブラウザに流すプロキシ
 app.get('/proxy', async (req, res) => {
   const url = req.query.url;
-  if(!url) return res.status(400).send('URL required');
+  if (!url) return res.status(400).send('URL required');
 
   try {
     const response = await fetch(url);
 
-    // ヘッダーをそのままコピー
+    // 必要なヘッダーをコピー
     res.set({
       'Content-Type': response.headers.get('content-type'),
       'Content-Length': response.headers.get('content-length'),
@@ -56,10 +58,13 @@ app.get('/proxy', async (req, res) => {
     });
 
     response.body.pipe(res);
-  } catch(err) {
+  } catch (err) {
     console.error('Proxy error:', err);
     res.status(500).send('Proxy failed');
   }
 });
 
-app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
+// サーバ起動
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}`);
+});
