@@ -29,23 +29,30 @@
 </head>
 <body>
 
-<h1>ytdl-core direct stream test → youtubei.js版</h1>
+<h1>youtubei.js 安定版 Stream Test</h1>
 
 <video id="videoPlayer" controls autoplay playsinline></video>
 
 <script>
-  const videoId = "VtGSvx866Js"; // 好きな動画ID
-  fetch(`/video?id=${videoId}`)
-    .then(res => res.json())
-    .then(data => {
+  const videoId = "dQw4w9WgXcQ"; // テスト用動画ID（年齢制限・地域制限なし）
+  const video = document.getElementById("videoPlayer");
+
+  async function loadVideo(id) {
+    try {
+      const res = await fetch(`/video?id=${id}`);
+      const data = await res.json();
       if(data.url){
-        const video = document.getElementById("videoPlayer");
         video.src = data.url;
-        video.play();
+        await video.play();
       } else {
         console.error("Stream URL取得失敗", data.error);
       }
-    });
+    } catch(err) {
+      console.error("Fetch error:", err);
+    }
+  }
+
+  loadVideo(videoId);
 </script>
 
 </body>
