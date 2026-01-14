@@ -43,8 +43,9 @@ async function loadVideo(id){
     const data = await res.json();
     console.log("Fetched JSON:", data);
 
-    if(data.streamUrl){
-      video.src = data.streamUrl;
+    if(data.proxyUrl){
+      video.src = data.proxyUrl;
+      video.muted = true; // 自動再生対策
       await video.play().catch(() => {
         console.warn("自動再生がブロックされました。再生ボタンを押してください");
       });
@@ -62,8 +63,8 @@ async function loadVideo(id){
   }
 }
 
+loadVideo(videoId);
 
-  loadVideo(videoId);
 </script>
 
 </body>
