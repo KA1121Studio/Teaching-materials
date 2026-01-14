@@ -1,5 +1,5 @@
 import express from 'express';
-import ytdl from '@distube/ytdl-core';
+import { Innertube } from 'youtubei.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -10,76 +10,51 @@ const PORT = process.env.PORT || 3000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// index.html
+// Innertube 初期化
+let youtube;
+(async () => {
+  youtube = await Innertube.create({
+    lang: 'ja',
+    location: 'JP',
+    retrieve_player: true,
+  });
+})();
+
+// index.html 配信
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// favicon 無視（404防止・任意）
-app.get('/favicon.ico', (req, res) => {
-  res.status(204).end();
-});
-
-// Range 完全対応ストリーム
+// stream URL 返すルート
 app.get('/video', async (req, res) => {
   const videoId = req.query.id;
   if (!videoId) {
-    res.status(400).send('video id required');
-    return;
-  }
-
-  const url = `https://www.youtube.com/watch?v=${videoId}`;
-  const range = req.headers.range;
-
-  if (!range) {
-    res.status(416).send('Range header required');
+    res.status(400).json({ error: 'video id required' });
     return;
   }
 
   try {
-    const info = await ytdl.getInfo(url);
-    const format = ytdl.chooseFormat(info.formats, {
-      quality: 'highest',
-      filter: 'audioandvideo'
-    });
+    const info = await youtube.videos.get(videoId);
 
-    const contentLength = parseInt(format.contentLength, 10);
-    const parts = range.replace(/bytes=/, '').split('-');
-    const start = parseInt(parts[0], 10);
-    const end = parts[1]
-      ? parseInt(parts[1], 10)
-      : contentLength - 1;
+    // mp4 + audio付きの最高画質を選ぶ
+    const format = info.streamingData.formats.find(f =>
+      f.mimeType.includes('video/mp4') && f.audioQuality
+    );
 
-    const chunkSize = end - start + 1;
+    if (!format) {
+      res.status(500).json({ error: 'No suitable format found' });
+      return;
+    }
 
-    res.writeHead(206, {
-      'Content-Range': `bytes ${start}-${end}/${contentLength}`,
-      'Accept-Ranges': 'bytes',
-      'Content-Length': chunkSize,
-      'Content-Type': 'video/mp4'
-    });
-
-const range = req.headers.range;
-
-res.setHeader('Content-Type', 'video/mp4');
-res.setHeader('Accept-Ranges', 'bytes');
-
-ytdl(url, {
-  filter: format =>
-    format.container === 'mp4' &&
-    format.hasAudio &&
-    format.hasVideo,
-  range,
-  highWaterMark: 1 << 25
-}).pipe(res);
-
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).send('stream error');
+    // JSON で URL を返す
+    res.json({ url: format.url });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Failed to get stream URL' });
   }
 });
 
+// サーバ起動
 app.listen(PORT, () => {
   console.log('server started on port', PORT);
 });
