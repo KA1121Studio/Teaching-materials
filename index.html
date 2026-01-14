@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>ホーム</title>
+  <title>外部URL経由 Stream Demo</title>
   <style>
     body{
       margin:0;
@@ -41,13 +41,24 @@
     try{
       const res = await fetch(`/video?id=${id}`);
       const data = await res.json();
+      console.log("Fetched JSON:", data);
 
-      if(data.url){  // 外部サーバから返ってくる動画URL
-        video.src = data.url;
+      // 柔軟対応: video.streamUrl または url
+      let streamUrl = undefined;
+
+      if(data.video && data.video.streamUrl){
+        streamUrl = data.video.streamUrl;
+      } else if(data.url){
+        streamUrl = data.url;
+      }
+
+      if(streamUrl){
+        video.src = streamUrl;
         await video.play();
       } else {
-        console.error("Stream URL取得失敗", data.error);
+        console.error("Stream URL取得失敗: 適切なフィールドが見つかりません", data);
       }
+
     } catch(err){
       console.error("Fetch error:", err);
     }
