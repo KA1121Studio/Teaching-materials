@@ -37,32 +37,31 @@
   const videoId = "VtGSvx866Js"; // 好きな動画ID
   const video = document.getElementById("videoPlayer");
 
-  async function loadVideo(id){
-    try{
-      const res = await fetch(`/video?id=${id}`);
-      const data = await res.json();
-      console.log("Fetched JSON:", data);
+async function loadVideo(id){
+  try{
+    const res = await fetch(`/video?id=${id}`);
+    const data = await res.json();
+    console.log("Fetched JSON:", data);
 
-      // 柔軟対応: video.streamUrl または url
-      let streamUrl = undefined;
-
-      if(data.video && data.video.streamUrl){
-        streamUrl = data.video.streamUrl;
-      } else if(data.url){
-        streamUrl = data.url;
-      }
-
-      if(streamUrl){
-        video.src = streamUrl;
-        await video.play();
-      } else {
-        console.error("Stream URL取得失敗: 適切なフィールドが見つかりません", data);
-      }
-
-    } catch(err){
-      console.error("Fetch error:", err);
+    if(data.streamUrl){
+      video.src = data.streamUrl;
+      await video.play().catch(() => {
+        console.warn("自動再生がブロックされました。再生ボタンを押してください");
+      });
+    } else {
+      console.error("再生URLが見つかりません");
+      const link = document.createElement('a');
+      link.href = `https://www.youtube.com/watch?v=${id}`;
+      link.target = "_blank";
+      link.textContent = "YouTubeで再生する";
+      document.body.appendChild(link);
     }
+
+  } catch(err){
+    console.error("Fetch error:", err);
   }
+}
+
 
   loadVideo(videoId);
 </script>
