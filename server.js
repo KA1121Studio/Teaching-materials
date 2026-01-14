@@ -1,7 +1,7 @@
 import express from 'express';
-import fetch from 'node-fetch';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { Client } from 'youtubei.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -15,30 +15,37 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// 外部サーバ経由で動画 URL を返す
+// YouTube 直接再生 URL を返す
 app.get('/video', async (req, res) => {
   const videoId = req.query.id;
   if (!videoId) return res.status(400).json({ error: 'video id required' });
 
-  const mainUrl = `https://siawaseok.duckdns.org/api/video2/${videoId}`;
-  const fallbackUrl = `https://siatube.wjg.jp/api/video2/${videoId}`;
-
   try {
-    let response = await fetch(mainUrl);
-    if (!response.ok) throw new Error('main server error');
-    let json = await response.json();
-    return res.json(json);
-  } catch (err) {
-    console.error("video: main server failed, fallbackへ", err.message);
-    try {
-      let response = await fetch(fallbackUrl);
-      if (!response.ok) throw new Error('fallback server error');
-      let json = await response.json();
-      return res.json(json);
-    } catch (err2) {
-      console.error("video: fallbackも失敗", err2.message);
-      return res.status(500).json({ error: "video: 両方のサーバーで取得失敗" });
+    const youtube = new Client();
+    const video = await youtube.getVideo(videoId);
+
+    // MP4 形式で再生可能なストリームを選択
+    const formats = video.streamingData.formats;
+    // 720p以上、audio+videoあるやつを優先
+    const stream = formats.find(f => f.hasVideo && f.hasAudio && f.qualityLabel?.includes('720'));
+
+    if (!stream) {
+      return res.status(500).json({ error: '再生可能なストリームが見つかりません' });
     }
+
+    // JSONで返す
+    res.json({
+      id: video.id,
+      title: video.title,
+      streamUrl: stream.url,
+      thumbnail: video.thumbnail?.url,
+      views: video.views?.toLocaleString(),
+      author: video.channel?.name
+    });
+
+  } catch (err) {
+    console.error('YouTube fetch error:', err);
+    res.status(500).json({ error: '動画取得に失敗しました' });
   }
 });
 
