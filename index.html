@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>YouTube Direct Stream</title>
+  <title>ホーム</title>
   <style>
     body{
       margin:0;
@@ -29,25 +29,26 @@
 </head>
 <body>
 
-<h1>youtubei.js 安定版 Stream Test</h1>
+<h1>外部URL経由 Stream Demo</h1>
 
 <video id="videoPlayer" controls autoplay playsinline></video>
 
 <script>
-  const videoId = "dQw4w9WgXcQ"; // テスト用動画ID（年齢制限・地域制限なし）
+  const videoId = "VtGSvx866Js"; // 好きな動画ID
   const video = document.getElementById("videoPlayer");
 
-  async function loadVideo(id) {
-    try {
+  async function loadVideo(id){
+    try{
       const res = await fetch(`/video?id=${id}`);
       const data = await res.json();
-      if(data.url){
+
+      if(data.url){  // 外部サーバから返ってくる動画URL
         video.src = data.url;
         await video.play();
       } else {
         console.error("Stream URL取得失敗", data.error);
       }
-    } catch(err) {
+    } catch(err){
       console.error("Fetch error:", err);
     }
   }
