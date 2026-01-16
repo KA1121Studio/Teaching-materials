@@ -58,6 +58,7 @@ app.get("/video", async (req, res) => {
           "user-agent": body.context.client.userAgent,
           "x-youtube-client-name": "3",
           "x-youtube-client-version": body.context.client.clientVersion
+          "origin": "https://www.youtube.com"
         },
         body: JSON.stringify(body)
       }
