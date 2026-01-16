@@ -65,11 +65,17 @@ app.get("/video", async (req, res) => {
       }
     );
 
-    if (!ytRes.ok) {
+if (!ytRes.ok) {
   const text = await ytRes.text();
   console.error("YouTubeレスポンスエラー:", ytRes.status, text);
-  throw new Error("YouTube request failed");
+
+  return res.status(500).json({
+    error: "youtube_blocked",
+    status: ytRes.status,
+    detail: text
+  });
 }
+
 
 
     const json = await ytRes.json();
