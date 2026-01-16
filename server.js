@@ -52,26 +52,24 @@ const body = {
 };
 
 
-    const ytRes = await fetch(
-      `https://www.youtube.com/youtubei/v1/player?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: {
-  "content-type": "application/json",
-  "user-agent": body.context.client.userAgent,
-  "x-youtube-client-name": "3",
-  "x-youtube-client-version": body.context.client.clientVersion,
-  "origin": "https://www.youtube.com"
-},
-
-        body: JSON.stringify(body)
-      }
-    );
+const ytRes = await fetch(
+  `https://www.youtube.com/youtubei/v1/player?key=${apiKey}`,
+  {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "user-agent": body.context.client.userAgent,
+      "x-youtube-client-name": "3",
+      "x-youtube-client-version": body.context.client.clientVersion,
+      "origin": "https://www.youtube.com"
+    },
+    body: JSON.stringify(body)
+  }
+);
 
 if (!ytRes.ok) {
   const text = await ytRes.text();
   console.error("YouTubeレスポンスエラー:", ytRes.status, text);
-
   return res.status(500).json({
     error: "youtube_blocked",
     status: ytRes.status,
@@ -79,13 +77,16 @@ if (!ytRes.ok) {
   });
 }
 
+// OKだった場合だけ JSON を読む
+const json = await ytRes.json();
 
 
-    const json = await ytRes.json();
+
+
     const adaptive = json?.streamingData?.adaptiveFormats || [];
+const formats   = json?.streamingData?.formats || [];
 
-    // 高ビットレートの「video only」を優先して選ぶ
-   // 高ビットレートの動画またはmuxedを優先して選ぶ
+// ① まず adaptive から狙う（今のあなたの方針を尊重）
 let videoStream = adaptive
   .filter(f =>
     f.mimeType?.startsWith("video/") ||
@@ -93,10 +94,25 @@ let videoStream = adaptive
   )
   .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
 
-// それでも無い場合 → とりあえず一番ビットレートが高いものを拾う（保険）
-if (!videoStream) {
-  videoStream = adaptive
+// ② adaptive がダメなら → 通常 formats をフォールバック
+if (!videoStream && formats.length) {
+  videoStream = formats
+    .filter(f => f.mimeType?.includes("video/mp4"))
     .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+}
+
+// ③ それでも無いなら → 何でもいいから最高ビットレート
+if (!videoStream) {
+  const all = [...adaptive, ...formats];
+  videoStream = all.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+}
+
+// もし本当に無かったらちゃんとエラーにする（安全設計）
+if (!videoStream) {
+  return res.status(500).json({
+    error: "no_stream_found",
+    message: "YouTubeから再生可能ストリームが取得できなかった"
+  });
 }
 
     // ---- 最終URLの組み立て ----
