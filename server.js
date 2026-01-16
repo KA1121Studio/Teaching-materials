@@ -57,6 +57,13 @@ app.get("/video", async (req, res) => {
       }
     );
 
+    if (!ytRes.ok) {
+  const text = await ytRes.text();
+  console.error("YouTubeレスポンスエラー:", ytRes.status, text);
+  throw new Error("YouTube request failed");
+}
+
+
     const json = await ytRes.json();
     const adaptive = json?.streamingData?.adaptiveFormats || [];
 
