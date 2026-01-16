@@ -28,7 +28,7 @@ app.get("/video", async (req, res) => {
   try {
     const apiKey = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8"; // YouTube内部公開キー
 
-    const body = {
+const body = {
   context: {
     client: {
       clientName: "ANDROID",
@@ -41,13 +41,17 @@ app.get("/video", async (req, res) => {
     }
   },
 
-  // ★★★ これが超重要 ★★★
+  playbackContext: {
+    contentPlaybackContext: {
+      html5Preference: "HTML5_PREF_WANTS"
+    }
+  },
+
   contentCheckOk: true,
   racyCheckOk: true,
 
   videoId
 };
-
 
     const ytRes = await fetch(
       `https://www.youtube.com/youtubei/v1/player?key=${apiKey}`,
