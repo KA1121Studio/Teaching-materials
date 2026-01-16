@@ -1,8 +1,5 @@
-// ===============================
-//  完成版 server.js（ANDROID経路＋cipher対応）
-// ===============================
-
 import express from "express";
+import { Youtube } from "youtubei.js";
 import fetch from "node-fetch";
 import { fileURLToPath } from "url";
 import path from "path";
@@ -13,148 +10,48 @@ const PORT = process.env.PORT || 3000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ----------- トップページ -----------
+// Youtubei.js インスタンス
+const youtube = new Youtube();
+
+// ---------- トップページ ----------
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// ----------- YouTube 取得エンドポイント -----------
+// ---------- YouTube動画取得 ----------
 app.get("/video", async (req, res) => {
   const videoId = req.query.id;
-  if (!videoId) {
-    return res.status(400).json({ error: "video id required" });
-  }
+  if (!videoId) return res.status(400).json({ error: "video id required" });
 
   try {
-    const apiKey = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8"; // YouTube内部公開キー
+    const video = await youtube.getVideo(videoId);
 
-const body = {
-  context: {
-    client: {
-      clientName: "WEB_EMBEDDED_PLAYER",
-      clientVersion: "1.20231108.01.00",
-      userAgent:
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/119.0.0.0 Safari/537.36",
-      hl: "ja",
-      gl: "JP"
-    }
-  },
+    // adaptiveFormats から video/mp4 を優先
+    const streams = video.streams.filter(s => s.type.includes("video/mp4"));
+    if (!streams.length)
+      return res.status(500).json({ error: "no_stream_found", message: "再生可能ストリームがありません" });
 
-  playbackContext: {
-    contentPlaybackContext: {
-      html5Preference: "HTML5_PREF_WANTS"
-    }
-  },
-
-  contentCheckOk: true,
-  racyCheckOk: true,
-  videoId
-};
-
-
-const ytRes = await fetch(
-  `https://www.youtube.com/youtubei/v1/player?key=${apiKey}`,
-  {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "user-agent": body.context.client.userAgent,
-      "x-youtube-client-name": "3",
-      "x-youtube-client-version": body.context.client.clientVersion,
-      "origin": "https://www.youtube.com"
-    },
-    body: JSON.stringify(body)
-  }
-);
-
-if (!ytRes.ok) {
-  const text = await ytRes.text();
-  console.error("YouTubeレスポンスエラー:", ytRes.status, text);
-  return res.status(500).json({
-    error: "youtube_blocked",
-    status: ytRes.status,
-    detail: text
-  });
-}
-
-// OKだった場合だけ JSON を読む
-const json = await ytRes.json();
-
-
-
-
-    const adaptive = json?.streamingData?.adaptiveFormats || [];
-const formats   = json?.streamingData?.formats || [];
-
-// ① まず adaptive から狙う（今のあなたの方針を尊重）
-let videoStream = adaptive
-  .filter(f =>
-    f.mimeType?.startsWith("video/") ||
-    f.mimeType?.includes("video/mp4")
-  )
-  .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
-
-// ② adaptive がダメなら → 通常 formats をフォールバック
-if (!videoStream && formats.length) {
-  videoStream = formats
-    .filter(f => f.mimeType?.includes("video/mp4"))
-    .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
-}
-
-// ③ それでも無いなら → 何でもいいから最高ビットレート
-if (!videoStream) {
-  const all = [...adaptive, ...formats];
-  videoStream = all.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
-}
-
-// もし本当に無かったらちゃんとエラーにする（安全設計）
-if (!videoStream) {
-  return res.status(500).json({
-    error: "no_stream_found",
-    message: "YouTubeから再生可能ストリームが取得できなかった"
-  });
-}
-
-    // ---- 最終URLの組み立て ----
-    let finalUrl = videoStream.url;
-
-    // url が無い場合 → signatureCipher を展開
-    if (!finalUrl && videoStream.signatureCipher) {
-      const params = new URLSearchParams(videoStream.signatureCipher);
-
-      const baseUrl = params.get("url");
-      const sig = params.get("s");      // 生の署名
-      const sp = params.get("sp") || "sig";
-
-      if (baseUrl) {
-        finalUrl = `${baseUrl}&${sp}=${encodeURIComponent(sig)}`;
-      }
-    }
-
-    if (!finalUrl) {
-      return res.status(500).json({ error: "最終URLを組み立てられない" });
-    }
+    // ビットレート順で最高画質
+    const best = streams.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
 
     res.json({
-      url: finalUrl,
-      itag: videoStream.itag,
-      mimeType: videoStream.mimeType
+      url: best.url,
+      itag: best.itag,
+      mimeType: best.type
     });
 
   } catch (e) {
-    console.error("ANDROID client error:", e);
-    res.status(500).json({ error: "failed to fetch video" });
+    console.error("YouTube fetch error:", e);
+    res.status(500).json({ error: "failed_to_fetch_video", message: e.message });
   }
 });
 
-// ----------- googlevideo 専用プロキシ -----------
+// ---------- googlevideo プロキシ ----------
 app.get("/proxy", async (req, res) => {
   const url = req.query.url;
   if (!url) return res.status(400).send("URL required");
-
-  if (!url.startsWith("https://") || !url.includes("googlevideo.com")) {
+  if (!url.startsWith("https://") || !url.includes("googlevideo.com"))
     return res.status(400).send("Invalid URL");
-  }
 
   try {
     const response = await fetch(url);
@@ -162,7 +59,6 @@ app.get("/proxy", async (req, res) => {
       "Content-Type": response.headers.get("content-type"),
       "Accept-Ranges": "bytes"
     });
-
     response.body.pipe(res);
   } catch (err) {
     console.error("Proxy error:", err);
@@ -170,7 +66,7 @@ app.get("/proxy", async (req, res) => {
   }
 });
 
-// ----------- 起動 -----------
+// ---------- 起動 ----------
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
