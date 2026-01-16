@@ -61,13 +61,19 @@ app.get("/video", async (req, res) => {
     const adaptive = json?.streamingData?.adaptiveFormats || [];
 
     // 高ビットレートの「video only」を優先して選ぶ
-    let videoStream = adaptive
-      .filter(f => f.mimeType?.startsWith("video/"))
-      .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+   // 高ビットレートの動画またはmuxedを優先して選ぶ
+let videoStream = adaptive
+  .filter(f =>
+    f.mimeType?.startsWith("video/") ||
+    f.mimeType?.includes("video/mp4")
+  )
+  .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
 
-    if (!videoStream) {
-      return res.status(500).json({ error: "videoフォーマット自体が無い" });
-    }
+// それでも無い場合 → とりあえず一番ビットレートが高いものを拾う（保険）
+if (!videoStream) {
+  videoStream = adaptive
+    .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+}
 
     // ---- 最終URLの組み立て ----
     let finalUrl = videoStream.url;
