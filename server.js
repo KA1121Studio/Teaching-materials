@@ -28,7 +28,8 @@ app.get("/video", async (req, res) => {
 
   try {
     // まずInvidiousから動画情報を取得
-    const apiUrl = `https://invidious.snopyta.org/api/v1/videos/${videoId}`;
+    const apiUrl = `https://invidious.fdn.fr/api/v1/videos/${videoId}`;
+
     const info = await fetch(apiUrl).then(r => r.json());
 
     // mp4形式のストリームだけ抽出
