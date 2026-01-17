@@ -22,37 +22,45 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// 動画情報取得
 app.get("/video", async (req, res) => {
   const videoId = req.query.id;
   if (!videoId) return res.status(400).json({ error: "video id required" });
 
   try {
-    if (!youtube) return res.status(503).json({ error: "YouTube client not ready" });
+    // まずInvidiousから動画情報を取得
+    const apiUrl = `https://invidious.snopyta.org/api/v1/videos/${videoId}`;
+    const info = await fetch(apiUrl).then(r => r.json());
 
-    const info = await youtube.getInfo(videoId);
-    const formats = info.streaming_data?.formats ?? [];
+    // mp4形式のストリームだけ抽出
+    const streams = info.formatStreams.filter(s =>
+      s.mimeType.includes("video/mp4")
+    );
 
-    // mp4 ストリームだけ抽出
-    const mp4s = formats.filter(f => f.mimeType?.includes("mp4"));
-    if (!mp4s.length) return res.status(500).json({ error: "no_stream_found" });
+    if (!streams.length) {
+      return res.status(500).json({
+        error: "no_stream_found",
+        message: "mp4ストリームが見つからない"
+      });
+    }
 
-    // ビットレート高い順にソートして選択
-    const best = mp4s.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
-
-    // 再生可能URLを生成
-    const url = best.decipher ? best.decipher(info.session.player) : best.url;
+    // ビットレートが一番高いものを選ぶ（今の設計と同じ思想）
+    const best = streams.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
 
     res.json({
-      url,
+      url: best.url,
       itag: best.itag,
       mimeType: best.mimeType
     });
+
   } catch (e) {
-    console.error("YouTube fetch error:", e);
-    res.status(500).json({ error: "failed_to_fetch_video", message: e.message });
+    console.error("Invidious fetch error:", e);
+    res.status(500).json({
+      error: "failed_to_fetch_video",
+      message: e.message
+    });
   }
 });
+
 
 // プロキシ配信
 app.get("/proxy", async (req, res) => {
