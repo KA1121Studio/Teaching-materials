@@ -28,18 +28,18 @@ app.get("/video", async (req, res) => {
 
   try {
     // まずInvidiousから動画情報を取得
-// 候補のInvidious一覧
 const instances = [
-  "https://inv.nadeko.net",
-  "https://yewtu.be",
-  "https://invidious.snopyta.org",
-  "https://invidious.private.coffee"
+  "https://invidious.fdn.fr",
+  "https://invidious.jing.rocks",
+  "https://inv.tux.pizza",
+  "https://invidious.protokolla.fi"
 ];
+
 
 let info = null;
 let usedHost = null;
 
-// ★ 生きているサーバーを探して“実データ”を取るまで回す
+// 生きているサーバーを探して“実データ”を取るまで回す
 for (const host of instances) {
   const apiUrl = `${host}/api/v1/videos/${videoId}`;
 
