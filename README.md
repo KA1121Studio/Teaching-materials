@@ -1,3 +1,142 @@
+###やり方１
+
+なるほど、**まだ完全に直ってない証拠ログが出てる**ね 👍
+しかも原因はめちゃくちゃ分かりやすい — ナイス共有👏
+
+---
+
+## 🔍 いま何が起きているか（核心だけ）
+
+このレス👇
+
+```json
+{"error":"failed_to_fetch_video","message":"Command failed: yt-dlp ..."}
+```
+
+これはつまり、
+
+👉 **Render にデプロイされている server.js に、まだ `yt-dlp` を呼んでいるコードが残っている**
+
+ということ。
+
+**＝ 君がさっき貼ってくれた server.js とは“別バージョン”が本番に乗っている**可能性が高い。
+
+だから、
+
+```
+/video?id=VtGSvx866Js
+```
+
+を叩くと **Invidious ではなく yt-dlp が動いて 429で死亡 → 500** になっている。
+
+---
+
+## 🎯 今すぐやるべき“確実な直し方”
+
+### ✅ ステップ1：Render の server.js をこれに統一
+
+**“yt-dlpを一切使わない版”に置き換える**
+特に、**この部分があったら削除**👇
+
+```js
+// ❌ これが残っていたら完全削除
+import { execSync } from "child_process";   // ← もしあれば消す
+```
+
+そして **/video の中で yt-dlp を呼んでいる箇所を全部消す**。
+
+理想形はこう👇（要点だけ抜粋）
+
+```js
+app.get("/video", async (req, res) => {
+  const videoId = req.query.id;
+  if (!videoId) return res.status(400).json({ error: "video id required" });
+
+  const instances = [
+    "https://invidious.fdn.fr",
+    "https://invidious.jing.rocks",
+    "https://inv.tux.pizza",
+    "https://invidious.protokolla.fi"
+  ];
+
+  let info = null;
+
+  for (const host of instances) {
+    try {
+      const r = await fetch(`${host}/api/v1/videos/${videoId}`);
+      info = await r.json();
+      break;
+    } catch {}
+  }
+
+  if (!info) {
+    return res.status(502).json({ error: "no_invidious_available" });
+  }
+
+  const streams = info.formatStreams
+    .filter(s => s.mimeType.includes("video/mp4"));
+
+  const best = streams.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+
+  res.json({
+    url: best.url,
+    itag: best.itag,
+    mimeType: best.mimeType
+  });
+});
+```
+
+👉 **ポイント：ここには yt-dlp が1行も無いことが大事**
+
+---
+
+## 🧪 直ったかの確認テスト（先生チェック）
+
+デプロイし直したあと、もう一度これを叩く👇
+
+```
+https://teaching-materials-r4zf.onrender.com/video?id=VtGSvx866Js
+```
+
+成功なら、こんな感じが返るはず：
+
+```json
+{
+  "url": "https://rr3---sn-xxxx.googlevideo.com/...",
+  "itag": 18,
+  "mimeType": "video/mp4; codecs=..."
+}
+```
+
+これが出たら **フロントはそのままで動画が再生される** 🎬✨
+
+---
+
+## なぜこうなるのか（やさしく一言）
+
+Render＝共有クラウド環境
+YouTube＝ボット超警戒
+
+👉 **yt-dlp はほぼ確実にブロックされる運命**
+👉 **Invidious は今のところ生き残れる賢い抜け道**
+
+だから君の設計、実はかなり良い👏
+
+---
+
+## もしまだダメなら
+
+次にほしいのは：
+
+* **Renderにある“今の” server.js 全文**
+
+それ貼ってくれたら、
+👉 **問題の行を赤ペン先生みたいにズバッと指摘して直してあげる** ✏️😄
+
+
+
+###やり方２
+
 よし、ログがめちゃ有能すぎて原因がはっきりしてる👏
 ここまで来たの、本当にえらい👍（もうほぼゴール見えてる）
 
