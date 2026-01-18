@@ -31,17 +31,11 @@ app.get("/video", async (req, res) => {
   try {
    
 const url = execSync(
-  `yt-dlp --cookies youtube-cookies.txt \
-   --js-runtimes node \
-   --remote-components ejs:github \
-   --sleep-requests 1 \
-   --user-agent "Mozilla/5.0" \
-   -f "best[ext=mp4]" \
-   --get-url https://youtu.be/${videoId}`
+  `yt-dlp --cookies youtube-cookies.txt --js-runtimes node --remote-components ejs:github --sleep-requests 1 --user-agent "Mozilla/5.0" --get-url https://youtu.be/${videoId}`
 )
   .toString()
-  .trim();
-
+  .trim()
+  .split("\n")[0];   // ←★ 最初のURLだけ使う
 
 
     res.json({
@@ -73,15 +67,11 @@ app.get("/proxy", async (req, res) => {
       }
     });
 
-const headers = {
-  "Content-Type": response.headers.get("content-type"),
-  "Accept-Ranges": "bytes"
-};
-
-if (response.headers.get("content-range")) {
-  headers["Content-Range"] = response.headers.get("content-range");
-}
-
+    const headers = {
+      "Content-Type": response.headers.get("content-type"),
+      "Accept-Ranges": "bytes",
+      "Content-Range": response.headers.get("content-range") || range
+    };
 
     res.writeHead(response.status, headers);
     response.body.pipe(res);
@@ -101,18 +91,13 @@ app.get("/proxy-hls", async (req, res) => {
 
   // ←★ 超重要ポイント ★→
   // HLS内のチャンクURLをすべて /proxy に書き換える
- text = text.replace(
-  /https:\/\/[^ \n]+googlevideo\.com[^\n]+/g,
-  m => "/proxy?url=" + encodeURIComponent(m)
-);
+  text = text.replace(
+    /https:\/\/rr4---sn-[^\/]+\.googlevideo\.com[^\n]+/g,
+    m => "/proxy?url=" + encodeURIComponent(m)
+  );
 
-
-res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
-res.setHeader("Access-Control-Allow-Origin", "*");
-res.setHeader("Cache-Control", "no-cache");   // ←★ これだけ追加
-res.send(text);
-
-
+  res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
+  res.send(text);
 });
 
 
