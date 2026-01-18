@@ -108,8 +108,10 @@ app.get("/proxy-hls", async (req, res) => {
 
 
 res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
-res.setHeader("Access-Control-Allow-Origin", "*");   // ←★ これだけ追加
+res.setHeader("Access-Control-Allow-Origin", "*");
+res.setHeader("Cache-Control", "no-cache");   // ←★ これだけ追加
 res.send(text);
+
 
 });
 
