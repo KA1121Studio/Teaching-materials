@@ -4,11 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>ANDROID URL Test</title>
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
 <body style="background:#111;color:#fff">
 
-<h2>ANDROID client test (HLS対応)</h2>
+<h2>ANDROID client test (音声付きMP4)</h2>
 
 <video id="v" controls autoplay muted playsinline style="width:100%"></video>
 
@@ -26,19 +25,9 @@ async function load() {
     return;
   }
 
-  // HLS対応
-  if (Hls.isSupported()) {
-    const hls = new Hls();
-    hls.loadSource("/proxy-hls?url=" + encodeURIComponent(data.url));
-    hls.attachMedia(v);
-    hls.on(Hls.Events.MANIFEST_PARSED, () => {
-      v.play();
-    });
-  } else {
-    // SafariなどネイティブHLS対応ブラウザ向け
-    v.src = "/proxy-hls?url=" + encodeURIComponent(data.url);
-    v.play();
-  }
+  // 直接MP4をセット（音声付き）
+  v.src = data.url;
+  v.play();
 }
 
 load();
