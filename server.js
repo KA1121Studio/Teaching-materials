@@ -73,11 +73,15 @@ app.get("/proxy", async (req, res) => {
       }
     });
 
-    const headers = {
-      "Content-Type": response.headers.get("content-type"),
-      "Accept-Ranges": "bytes",
-      "Content-Range": response.headers.get("content-range") || range
-    };
+const headers = {
+  "Content-Type": response.headers.get("content-type"),
+  "Accept-Ranges": "bytes"
+};
+
+if (response.headers.get("content-range")) {
+  headers["Content-Range"] = response.headers.get("content-range");
+}
+
 
     res.writeHead(response.status, headers);
     response.body.pipe(res);
@@ -103,8 +107,10 @@ app.get("/proxy-hls", async (req, res) => {
 );
 
 
-  res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
-  res.send(text);
+res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
+res.setHeader("Access-Control-Allow-Origin", "*");   // ←★ これだけ追加
+res.send(text);
+
 });
 
 
