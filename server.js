@@ -97,10 +97,11 @@ app.get("/proxy-hls", async (req, res) => {
 
   // ←★ 超重要ポイント ★→
   // HLS内のチャンクURLをすべて /proxy に書き換える
-  text = text.replace(
-    /https:\/\/rr4---sn-[^\/]+\.googlevideo\.com[^\n]+/g,
-    m => "/proxy?url=" + encodeURIComponent(m)
-  );
+ text = text.replace(
+  /https:\/\/[^ \n]+googlevideo\.com[^\n]+/g,
+  m => "/proxy?url=" + encodeURIComponent(m)
+);
+
 
   res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
   res.send(text);
