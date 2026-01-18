@@ -28,14 +28,14 @@ async function load() {
     return;
   }
 
-  // HLS.js対応
+  // HLS.jsで再生
   if (Hls.isSupported()) {
     const hls = new Hls();
     hls.loadSource(`/proxy-hls?url=${encodeURIComponent(data.url)}`);
     hls.attachMedia(v);
     hls.on(Hls.Events.MANIFEST_PARSED, () => v.play());
   } else if (v.canPlayType('application/vnd.apple.mpegurl')) {
-    // Safari/iOS向けネイティブ再生
+    // Safari/iOSはネイティブ再生
     v.src = `/proxy-hls?url=${encodeURIComponent(data.url)}`;
     v.addEventListener('loadedmetadata', () => v.play());
   }
