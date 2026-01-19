@@ -106,47 +106,6 @@ app.get("/proxy-hls", async (req, res) => {
   res.send(text);
 });
 
-app.get("/download", async (req, res) => {
-  const videoId = req.query.id;
-  if (!videoId) return res.status(400).send("video id required");
-
-  try {
-    // まず今と同じ方法でURLを取る
-    const output = execSync(
-      `yt-dlp --cookies youtube-cookies.txt --js-runtimes node --remote-components ejs:github --sleep-requests 1 --user-agent "Mozilla/5.0" --get-url -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]" https://youtu.be/${videoId}`
-    ).toString().trim().split("\n");
-
-    const videoUrl = output[0];
-    const audioUrl = output[1];
-
-    // 一時ファイル名
-    const vFile = `/tmp/${videoId}_v.mp4`;
-    const aFile = `/tmp/${videoId}_a.m4a`;
-    const outFile = `/tmp/${videoId}.mp4`;
-
-    // 映像ダウンロード
-    execSync(`curl -L "${videoUrl}" -o ${vFile}`);
-
-    // 音声ダウンロード
-    execSync(`curl -L "${audioUrl}" -o ${aFile}`);
-
-    // ★ ここで合体（超重要ポイント）
-    execSync(
-      `ffmpeg -y -i ${vFile} -i ${aFile} -c:v copy -c:a aac ${outFile}`
-    );
-
-    // ダウンロードとして返す
-    res.download(outFile, `${videoId}.mp4`);
-
-  } catch (e) {
-    console.error("download error:", e);
-    res.status(500).json({
-      error: "merge_failed",
-      message: e.message
-    });
-  }
-});
-
 
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
