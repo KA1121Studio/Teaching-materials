@@ -64,8 +64,7 @@ app.get("/proxy", async (req, res) => {
   const url = req.query.url;
   if (!url) return res.status(400).send("URL required");
 
-  const range = req.headers.range; // ← これが超重要
-
+  const range = req.headers.range;
   try {
     const response = await fetch(url, {
       headers: {
@@ -95,7 +94,7 @@ app.get("/proxy-hls", async (req, res) => {
   const r = await fetch(url);
   let text = await r.text();
 
-  // ←★ 超重要ポイント ★→
+ 
   // HLS内のチャンクURLをすべて /proxy に書き換える
   text = text.replace(
     /https:\/\/rr4---sn-[^\/]+\.googlevideo\.com[^\n]+/g,
