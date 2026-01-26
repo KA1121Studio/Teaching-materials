@@ -38,7 +38,7 @@ app.get("/video", async (req, res) => {
     const output = execSync(
       `yt-dlp --cookies youtube-cookies.txt --js-runtimes node ` +
       `--user-agent "Mozilla/5.0" ` +
-      `-f "best[ext=mp4][height<=720]/best[height<=720][ext=mp4]/best[height<=720]" ` +
+      `-f "best[protocol*=http][ext=mp4][height<=720]/best[protocol*=http][height<=720][ext=mp4]" ` +
       `--get-url https://youtu.be/${videoId}`
     ).toString().trim();
 
