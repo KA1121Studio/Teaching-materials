@@ -34,25 +34,24 @@ app.get("/video", async (req, res) => {
   if (!videoId) return res.status(400).json({ error: "video id required" });
 
   try {
-    // yt-dlpで動画と音声を取得
-// 変更前（例）
-const output = execSync(
-  `yt-dlp --cookies youtube-cookies.txt --js-runtimes node ` +
-  `--remote-components ejs:github --user-agent "Mozilla/5.0" ` +
-  `-f "bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]" ` +
-  `--get-url https://youtu.be/${videoId}`
-).toString().trim().split("\n");
+    // 音声内蔵の単一MP4ストリームを取得
+    const output = execSync(
+      `yt-dlp --cookies youtube-cookies.txt --js-runtimes node ` +
+      `--user-agent "Mozilla/5.0" ` +
+      `-f "best[ext=mp4][height<=720]/best[height<=720][ext=mp4]/best[height<=720]" ` +
+      `--get-url https://youtu.be/${videoId}`
+    ).toString().trim();
 
+    const videoUrl = output.split("\n").filter(Boolean)[0]; // 単一のマージ済みURL
 
-
-
-    const videoUrl = output[0]; // 動画URL
-    const audioUrl = output[1]; // 音声URL
+    if (!videoUrl) {
+      return res.status(404).json({ error: "no suitable stream found" });
+    }
 
     res.json({
-      video: videoUrl,
-      audio: audioUrl,
-      source: "yt-dlp-with-cookies"
+      video: videoUrl,        // 音声+映像がマージ済みのMP4
+      audio: null,            // 単一ストリームなのでaudio不要
+      source: "yt-dlp-merged-mp4"
     });
 
   } catch (e) {
@@ -63,7 +62,6 @@ const output = execSync(
     });
   }
 });
-
 
 
 // プロキシ配信
