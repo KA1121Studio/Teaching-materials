@@ -27,14 +27,12 @@ app.get("/watch.html", (req, res) => {
   res.sendFile(path.join(__dirname, "watch.html"));
 });
 
-// video.html 用
-app.get("/video.html", (req, res) => {
-  res.sendFile(path.join(__dirname, "video.html"));
+app.get("/audio-only.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "audio-only.html"));
 });
 
-// audio.html 用
-app.get("/audio.html", (req, res) => {
-  res.sendFile(path.join(__dirname, "audio.html"));
+app.get("/video-only.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "video-only.html"));
 });
 
 
@@ -68,41 +66,6 @@ app.get("/video", async (req, res) => {
   }
 });
 
-// 映像だけ返すエンドポイント
-app.get("/video-only", async (req, res) => {
-  const videoId = req.query.id;
-  if (!videoId) return res.status(400).json({ error: "video id required" });
-
-  try {
-    const output = execSync(
-      `yt-dlp --cookies youtube-cookies.txt --js-runtimes node --remote-components ejs:github --sleep-requests 1 --user-agent "Mozilla/5.0" --get-url -f "bestvideo[ext=mp4]" https://youtu.be/${videoId}`
-    ).toString().trim().split("\n");
-
-    const videoUrl = output[0]; // 映像URL
-    res.json({ video: videoUrl });
-  } catch (e) {
-    console.error("yt-dlp error:", e);
-    res.status(500).json({ error: "failed_to_fetch_video" });
-  }
-});
-
-// 音声だけ返すエンドポイント
-app.get("/audio-only", async (req, res) => {
-  const videoId = req.query.id;
-  if (!videoId) return res.status(400).json({ error: "video id required" });
-
-  try {
-    const output = execSync(
-      `yt-dlp --cookies youtube-cookies.txt --js-runtimes node --remote-components ejs:github --sleep-requests 1 --user-agent "Mozilla/5.0" --get-url -f "bestaudio[ext=m4a]" https://youtu.be/${videoId}`
-    ).toString().trim().split("\n");
-
-    const audioUrl = output[0]; // 音声URL
-    res.json({ audio: audioUrl });
-  } catch (e) {
-    console.error("yt-dlp error:", e);
-    res.status(500).json({ error: "failed_to_fetch_audio" });
-  }
-});
 
 
 // プロキシ配信
