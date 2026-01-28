@@ -66,39 +66,51 @@ app.get("/video", async (req, res) => {
   }
 });
 
+
+
 app.get("/video-only", async (req, res) => {
   const videoId = req.query.id;
   if (!videoId) return res.status(400).json({ error: "video id required" });
 
   try {
     const output = execSync(
-      `yt-dlp --cookies youtube-cookies.txt --get-url -f "bestvideo[ext=mp4]/bestvideo" https://youtu.be/${videoId}`
-    ).toString().trim();
+      `yt-dlp --cookies youtube-cookies.txt --js-runtimes node --remote-components ejs:github --sleep-requests 1 --user-agent "Mozilla/5.0" --get-url -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]" https://youtu.be/${videoId}`
+    )
+      .toString()
+      .trim()
+      .split("\n");
 
-    res.json({ video: output });
+    res.json({
+      video: output[0] // 映像URLだけ返す
+    });
+
   } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "failed_to_fetch_video_only" });
+    console.error("video-only error:", e);
+    res.status(500).json({
+      error: "failed_to_fetch_video_only",
+      message: e.message
+    });
   }
 });
 
 
-app.get("/audio-only", async (req, res) => {
+
+
+app.get("/video-only", async (req, res) => {
   const videoId = req.query.id;
   if (!videoId) return res.status(400).json({ error: "video id required" });
 
   try {
     const output = execSync(
-      `yt-dlp --cookies youtube-cookies.txt --get-url -f "bestaudio[ext=m4a]/bestaudio" https://youtu.be/${videoId}`
-    ).toString().trim();
+      `yt-dlp --cookies youtube-cookies.txt --get-url -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]" https://youtu.be/${videoId}`
+    ).toString().trim().split("\n");
 
-    res.json({ audio: output });
+    res.json({ video: output[0] });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: "failed_to_fetch_audio_only" });
+    res.status(500).json({ error: "failed_to_fetch_video_only" });
   }
 });
-
 
 
 
