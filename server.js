@@ -27,12 +27,12 @@ app.get("/watch.html", (req, res) => {
   res.sendFile(path.join(__dirname, "watch.html"));
 });
 
-app.get("/audio-only.html", (req, res) => {
-  res.sendFile(path.join(__dirname, "audio-only.html"));
+app.get("/video.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "video.html"));
 });
 
-app.get("/video-only.html", (req, res) => {
-  res.sendFile(path.join(__dirname, "video-only.html"));
+app.get("/audio.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "audio.html"));
 });
 
 
@@ -65,6 +65,40 @@ app.get("/video", async (req, res) => {
     });
   }
 });
+
+app.get("/video-only", async (req, res) => {
+  const videoId = req.query.id;
+  if (!videoId) return res.status(400).json({ error: "video id required" });
+
+  try {
+    const output = execSync(
+      `yt-dlp --cookies youtube-cookies.txt --get-url -f "bestvideo[ext=mp4]" https://youtu.be/${videoId}`
+    ).toString().trim();
+
+    res.json({ video: output });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "failed_to_fetch_video_only" });
+  }
+});
+
+
+app.get("/audio-only", async (req, res) => {
+  const videoId = req.query.id;
+  if (!videoId) return res.status(400).json({ error: "video id required" });
+
+  try {
+    const output = execSync(
+      `yt-dlp --cookies youtube-cookies.txt --get-url -f "bestaudio[ext=m4a]" https://youtu.be/${videoId}`
+    ).toString().trim();
+
+    res.json({ audio: output });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "failed_to_fetch_audio_only" });
+  }
+});
+
 
 
 
