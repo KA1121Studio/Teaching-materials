@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>AUDIO ONLY</title>
+  <style>body{margin:0; background:#111; color:#0f0;display:flex;align-items:center;justify-content:center;height:100vh;font-size:1.5rem;}</style>
+</head>
+<body>
+
+<audio id="audio" controls></audio>
+<p id="tip"></p>
+
+<script>
+const params = new URLSearchParams(location.search);
+const id = params.get("id");
+const audioEl = document.getElementById("audio");
+const tip = document.getElementById("tip");
+
+if (!id) {
+  tip.textContent = "VIDEO ID を指定";
+} else {
+  fetch(`/video?id=${id}`)
+    .then(r => r.json())
+    .then(d => {
+      if (!d.audio) {
+        tip.textContent = "音声URL が取れない ";
+        return;
+      }
+      audioEl.src = "/proxy?url=" + encodeURIComponent(d.audio);
+    })
+    .catch(e => {
+      console.error(e);
+      tip.textContent = "取得エラー ";
+    });
+}
+</script>
+
+</body>
+</html>
