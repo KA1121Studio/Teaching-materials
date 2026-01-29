@@ -31,8 +31,7 @@ if (!videoId) {
         return;
       }
 
-      videoEl.src = "/proxy-hls?url=" + encodeURIComponent(data.video);
-
+      videoEl.src = "/proxy?url=" + encodeURIComponent(data.video);
       audioEl.src = "/proxy?url=" + encodeURIComponent(data.audio);
 
 
